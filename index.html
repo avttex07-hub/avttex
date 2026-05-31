@@ -16,56 +16,6 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=League+Spartan:wght@400;500;600;700&family=Poppins:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-
-  /* ── iPad Cart Fix ── */
-@media (max-width: 1200px) {
-  .pos-cart {
-    width: 300px;
-    min-width: 280px;
-  }
-  .cart-items {
-    max-height: 160px;
-    flex: 0 1 auto;
-  }
-  .cart-totals {
-    flex-shrink: 0;
-  }
-  .payment-section {
-    flex-shrink: 0;
-  }
-  .checkout-btn {
-    padding: 10px;
-    font-size: 13px;
-  }
-}
-
-/* ── iPad height fix — make cart scrollable internally ── */
-@media (max-height: 900px) {
-  .cart-items {
-    max-height: 120px;
-  }
-  .cart-totals {
-    padding: 5px 14px;
-  }
-  .total-row {
-    padding: 2px 0;
-  }
-  .total-row.grand {
-    padding-top: 5px;
-  }
-  .payment-section {
-    padding: 6px 14px 8px;
-  }
-  .payment-methods {
-    margin-bottom: 6px;
-  }
-  .checkout-btn {
-    padding: 10px;
-  }
-  .discount-row {
-    padding: 2px 0;
-  }
-}
   /* ── League Spartan for all headings ── */
 .topbar-title,
 .section-title,
@@ -119,7 +69,7 @@ body {
   --shadow:0 4px 24px rgba(0,0,0,0.4);--transition:0.18s ease;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);height:100%;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
+html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);height:100%;overflow:hidden;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;}
 
 /* ── Sidebar scrollable nav ── */
 #sidebar-nav {
@@ -127,7 +77,6 @@ html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);heigh
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
-  -webkit-overflow-scrolling: touch;
 }
 
 #sidebar-nav::-webkit-scrollbar {
@@ -142,7 +91,7 @@ html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);heigh
 }  
   
 /* LAYOUT */
-#app{display:flex;height:100vh;overflow:hidden;position:fixed;width:100%;top:0;left:0;}
+#app{display:flex;height:100vh;overflow:hidden;}
 #sidebar{width:224px;min-width:224px;background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;transition:width var(--transition);overflow:hidden;height:100vh;}
 .sidebar-brand{padding:18px 18px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
 .brand-logo{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
@@ -173,13 +122,13 @@ html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);heigh
 .sync-dot.syncing{animation:pulse 1s ease infinite;background:var(--accent);}
 .sync-dot.offline{background:var(--red);}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.3;}}
-.page-content{flex:1;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch;}
+.page-content{flex:1;overflow-y:auto;padding:20px;}
 .screen{display:none;}
 .screen.active{display:block;}
 
 /* POS LAYOUT */
 #pos-screen{display:none;}
-#pos-screen.active{display:flex;gap:14px;height:calc(100vh - 50px);padding:14px;overflow:hidden;max-height:calc(100vh - 50px);}
+#pos-screen.active{display:flex;gap:14px;height:calc(100vh - 50px);padding:14px;overflow:hidden;}
 .pos-catalog{flex:1;display:flex;flex-direction:column;gap:10px;overflow:hidden;min-width:0;}
 .catalog-toolbar{display:flex;gap:8px;align-items:center;}
 .search-wrap{flex:1;position:relative;}
@@ -192,7 +141,7 @@ html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);heigh
 .pill{padding:4px 11px;border-radius:20px;border:1px solid var(--border);background:var(--bg2);color:var(--text2);font-size:12px;cursor:pointer;transition:all var(--transition);white-space:nowrap;user-select:none;}
 .pill:hover{border-color:var(--border2);color:var(--text0);}
 .pill.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent-text);}
-.items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px;overflow-y:auto;padding-bottom:4px;align-content:start;-webkit-overflow-scrolling:touch;}
+.items-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:9px;overflow-y:auto;padding-bottom:4px;align-content:start;}
 .item-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:11px;cursor:pointer;transition:all var(--transition);position:relative;user-select:none;}
 .item-card:hover{border-color:var(--accent);background:var(--bg3);transform:translateY(-1px);}
 .item-card:active{transform:scale(0.97);}
@@ -229,7 +178,7 @@ html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);heigh
 .selected-customer span{font-size:12.5px;color:var(--text0);flex:1;}
 .remove-cust{color:var(--text3);cursor:pointer;font-size:16px;line-height:1;transition:color var(--transition);}
 .remove-cust:hover{color:var(--red);}
-.cart-items{flex:1;overflow-y:auto;padding:6px 14px;-webkit-overflow-scrolling:touch;}
+.cart-items{flex:1 1 0;overflow-y:auto;padding:6px 14px;min-height:0;-webkit-overflow-scrolling:touch;}
 .cart-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:8px;padding:20px;}
 .cart-empty-icon{font-size:32px;}
 .cart-empty-text{font-size:12.5px;text-align:center;}
@@ -245,7 +194,7 @@ html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);heigh
 .qty-btn:hover{background:var(--bg4);border-color:var(--border2);color:var(--text0);}
 .qty-val{font-size:12.5px;font-weight:600;color:var(--text0);min-width:16px;text-align:center;font-family:var(--mono);}
 .cart-item-total{font-size:12.5px;font-weight:600;color:var(--accent-text);font-family:var(--mono);min-width:52px;text-align:right;}
-.cart-totals{padding:8px 14px;border-top:1px solid var(--border);background:var(--bg0);}
+.cart-totals{padding:8px 14px;border-top:1px solid var(--border);background:var(--bg0);flex-shrink:0;}
 .total-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;font-size:12.5px;color:var(--text2);}
 .total-row span:last-child{font-family:var(--mono);color:var(--text1);}
 .total-row.grand{font-size:15px;font-weight:600;color:var(--text0);padding-top:7px;margin-top:3px;border-top:1px solid var(--border);}
@@ -257,7 +206,7 @@ html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);heigh
 .discount-type-toggle{display:flex;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;}
 .dtog{padding:3px 8px;font-size:11px;cursor:pointer;color:var(--text2);transition:all var(--transition);}
 .dtog.active{background:var(--accent-dim);color:var(--accent-text);}
-.payment-section{padding:8px 14px 12px;border-top:1px solid var(--border);}
+.payment-section{padding:8px 14px 12px;border-top:1px solid var(--border);flex-shrink:0;}
 .payment-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:7px;}
 .payment-methods{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px;}
 .pm-btn{padding:8px 4px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text2);font-size:11.5px;font-weight:500;cursor:pointer;text-align:center;transition:all var(--transition);user-select:none;}
@@ -269,7 +218,7 @@ html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);heigh
 .held-label{font-size:11px;color:var(--text3);margin-bottom:5px;}
 .held-chip{display:inline-flex;align-items:center;gap:5px;background:var(--blue-dim);border:1px solid var(--blue-dim);border-radius:5px;padding:3px 8px;font-size:11px;color:var(--blue);cursor:pointer;margin:2px;}
 .held-chip:hover{border-color:var(--blue);}
-.checkout-btn{width:100%;padding:13px;background:var(--accent);border:none;border-radius:var(--radius);color:#0a0a0a;font-family:var(--font);font-size:13.5px;font-weight:700;cursor:pointer;transition:all var(--transition);}
+.checkout-btn{width:100%;padding:13px;background:var(--accent);border:none;border-radius:var(--radius);color:#0a0a0a;font-family:var(--font);font-size:13.5px;font-weight:700;cursor:pointer;transition:all var(--transition);min-height:48px;flex-shrink:0;}
 .checkout-btn:hover{background:#f5c96e;transform:translateY(-1px);}
 .checkout-btn:active{transform:scale(0.98);}
 .checkout-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none;}
@@ -508,70 +457,104 @@ textarea.form-control{resize:vertical;min-height:60px;}
 #sidebar nav-section-scroll{overflow-y:auto;flex:1;}
 
 
-/* ── iPad / iOS Safari scroll fix ── */
-@supports (-webkit-touch-callout: none) #pos-screen.active {
-    height: calc(100vh - 50px);
-    max-height: calc(100vh - 50px);
+/* ══════════════════════════════════════════
+   IPAD / TABLET CART FIX
+   Ensures checkout button is always visible
+══════════════════════════════════════════ */
+
+/* Key fix: cart-items must never grow beyond available space */
+.pos-cart {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.cart-items {
+  flex: 1 1 0 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.cart-totals,
+.payment-section,
+.cart-header,
+.customer-bar,
+.selected-customer-bar,
+.held-sales-bar {
+  flex-shrink: 0 !important;
+}
+
+/* iPad landscape */
+@media (min-width: 768px) and (max-width: 1366px) {
+  #pos-screen.active {
+    height: calc(100vh - 50px) !important;
+    max-height: calc(100vh - 50px) !important;
+    overflow: hidden !important;
   }
   .pos-cart {
-    max-height: calc(100vh - 80px);
-    overflow: hidden;
+    width: 310px !important;
+    min-width: 290px !important;
+    height: 100% !important;
+    max-height: calc(100vh - 80px) !important;
   }
   .cart-items {
-    max-height: 150px;
-    overflow-y: scroll;
-    -webkit-overflow-scrolling: touch;
+    max-height: calc(100vh - 530px) !important;
+    min-height: 60px !important;
   }
   .checkout-btn {
-    min-height: 44px;
+    padding: 12px !important;
+    font-size: 13px !important;
   }
-  {
-  /* iOS Safari specific */
-  #app {
-    position: fixed;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
+}
+
+/* iPad portrait */
+@media (max-width: 1024px) and (orientation: portrait) {
+  #pos-screen.active {
+    flex-direction: column !important;
+    height: auto !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
   }
-  #sidebar-nav {
-    -webkit-overflow-scrolling: touch;
-    overflow-y: scroll;
-  }
-  .page-content {
-    -webkit-overflow-scrolling: touch;
-    overflow-y: scroll;
+  .pos-cart {
+    width: 100% !important;
+    min-width: unset !important;
+    max-height: none !important;
+    height: auto !important;
   }
   .cart-items {
-    -webkit-overflow-scrolling: touch;
-    overflow-y: scroll;
-  }
-  .items-grid {
-    -webkit-overflow-scrolling: touch;
-    overflow-y: scroll;
-  }
-  .modal {
-    -webkit-overflow-scrolling: touch;
-    overflow-y: scroll;
+    max-height: 200px !important;
   }
 }
 
-/* ── iPad landscape layout ── */
-@media (min-width: 768px) and (max-width: 1200px) {
-  #sidebar { width: 200px; min-width: 200px; }
-  .items-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
-  .pos-cart { width: 300px; min-width: 300px; }
+/* Small height screens */
+@media (max-height: 800px) {
+  .cart-items {
+    max-height: 100px !important;
+    min-height: 50px !important;
+  }
+  .cart-totals { padding: 4px 14px !important; }
+  .total-row   { padding: 2px 0 !important; }
+  .discount-row{ padding: 2px 0 !important; }
+  .payment-section { padding: 5px 14px 8px !important; }
+  .payment-methods { margin-bottom: 5px !important; }
+  .checkout-btn { padding: 10px !important; min-height: 42px !important; }
 }
 
-/* ── iPad portrait fix ── */
-@media (max-width: 900px) and (orientation: portrait) {
+/* iOS Safari specific */
+@supports (-webkit-touch-callout: none) {
+  .pos-cart {
+    max-height: calc(100vh - 80px) !important;
+  }
+  .cart-items {
+    overflow-y: scroll !important;
+    -webkit-overflow-scrolling: touch !important;
+    flex: 1 1 0 !important;
+    min-height: 0 !important;
+  }
   #pos-screen.active {
-    flex-direction: column;
-    height: auto;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    height: calc(100vh - 50px) !important;
   }
-  .pos-cart { width: 100%; min-width: unset; }
 }
 
 </style>
@@ -1294,11 +1277,7 @@ const fmt = n => '₹'+(+n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
 function getSubtotal(){ return cart.reduce((s,i)=>s+i.price*i.qty,0); }
 function getDiscountAmt(){
   const sub=getSubtotal(),d=parseFloat(g('discount-value').value)||0;
-  if(discountType==='pct'){
-    const pct=Math.min(d,100); // cap at 100%
-    return Math.min(sub*pct/100,sub);
-  }
-  return Math.min(d,sub); // flat can't exceed subtotal
+  return discountType==='pct'?Math.min(sub*d/100,sub):Math.min(d,sub);
 }
 function computeTotals(){
   const sub=getSubtotal(),discAmt=getDiscountAmt(),afterDisc=sub-discAmt;
