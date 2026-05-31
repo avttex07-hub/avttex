@@ -155,7 +155,7 @@ html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);heigh
 @keyframes flashFade{from{opacity:1;}to{opacity:0;}}
 
 /* CART */
-.pos-cart{width:330px;min-width:330px;background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);display:flex;flex-direction:column;overflow:hidden;max-height:100%;height:100%;}
+.pos-cart{width:330px;min-width:330px;background:var(--bg1);border:1px solid var(--border);border-radius:var(--radius-lg);display:flex;flex-direction:column;overflow:hidden;}
 .cart-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
 .cart-title{font-size:14px;font-weight:600;color:var(--text0);flex:1;}
 .cart-count{background:var(--accent);color:#0a0a0a;font-size:10px;font-weight:700;padding:2px 7px;border-radius:12px;font-family:var(--mono);}
@@ -178,7 +178,7 @@ html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);heigh
 .selected-customer span{font-size:12.5px;color:var(--text0);flex:1;}
 .remove-cust{color:var(--text3);cursor:pointer;font-size:16px;line-height:1;transition:color var(--transition);}
 .remove-cust:hover{color:var(--red);}
-.cart-items{flex:1 1 0;overflow-y:auto;padding:6px 14px;min-height:0;-webkit-overflow-scrolling:touch;}
+.cart-items{flex:1;overflow-y:auto;padding:6px 14px;}
 .cart-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:8px;padding:20px;}
 .cart-empty-icon{font-size:32px;}
 .cart-empty-text{font-size:12.5px;text-align:center;}
@@ -287,9 +287,9 @@ textarea.form-control{resize:vertical;min-height:60px;}
 .btn-icon{padding:6px 7px;}
 
 /* MODAL */
-.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:flex-start;justify-content:center;backdrop-filter:blur(4px);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 10px;}
 .modal-overlay.open{display:flex;}
-.modal{background:var(--bg1);border:1px solid var(--border2);border-radius:var(--radius-lg);width:500px;max-width:95vw;max-height:90vh;overflow-y:auto;animation:modalIn 0.2s ease;}
+.modal{background:var(--bg1);border:1px solid var(--border2);border-radius:var(--radius-lg);width:500px;max-width:95vw;max-height:85vh;overflow-y:auto;-webkit-overflow-scrolling:touch;animation:modalIn 0.2s ease;margin:auto;}
 .modal-lg{width:640px;}
 @keyframes modalIn{from{opacity:0;transform:scale(0.96) translateY(8px);}to{opacity:1;transform:scale(1) translateY(0);}}
 .modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg1);z-index:1;}
@@ -297,7 +297,7 @@ textarea.form-control{resize:vertical;min-height:60px;}
 .modal-close{width:26px;height:26px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;cursor:pointer;color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:15px;transition:all var(--transition);}
 .modal-close:hover{background:var(--bg4);color:var(--text0);}
 .modal-body{padding:18px 20px;}
-.modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;position:sticky;bottom:0;background:var(--bg1);}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;position:sticky;bottom:0;background:var(--bg1);flex-shrink:0;z-index:2;}
 
 /* RECEIPT */
 .receipt-wrap{background:#fff;color:#111;padding:18px;border-radius:var(--radius);font-family:var(--mono);font-size:11.5px;max-width:290px;margin:0 auto;}
@@ -457,48 +457,90 @@ textarea.form-control{resize:vertical;min-height:60px;}
 #sidebar nav-section-scroll{overflow-y:auto;flex:1;}
 
 
-/* ══════════════════════════════════════════════════════
-   IPAD / TABLET CART FIX — Charge button always visible
-══════════════════════════════════════════════════════ */
-.pos-cart{display:flex !important;flex-direction:column !important;overflow:hidden !important;}
-.cart-items{flex:1 1 0 !important;min-height:0 !important;overflow-y:auto !important;-webkit-overflow-scrolling:touch !important;}
-.cart-totals,.payment-section,.cart-header,.customer-bar,.selected-customer-bar,.held-sales-bar{flex-shrink:0 !important;}
-.checkout-btn{flex-shrink:0 !important;min-height:46px !important;}
+/* ══════════════════════════════════════════════════
+   IPAD / iOS MODAL FIX — Buttons always reachable
+══════════════════════════════════════════════════ */
 
-/* iPad landscape (768–1366px) */
-@media(min-width:768px) and (max-width:1366px){
-  #pos-screen.active{height:calc(100vh - 50px) !important;max-height:calc(100vh - 50px) !important;overflow:hidden !important;}
-  .pos-cart{width:300px !important;min-width:280px !important;height:calc(100vh - 80px) !important;max-height:calc(100vh - 80px) !important;}
-  .cart-items{min-height:40px !important;}
-  .checkout-btn{padding:11px !important;font-size:13px !important;}
+/* Modal overlay scrolls on iPad so modal never clips */
+.modal-overlay.open {
+  display: flex !important;
+  align-items: flex-start !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding: 16px 10px !important;
 }
 
-/* iPad portrait */
-@media(max-width:1024px) and (orientation:portrait){
-  #pos-screen.active{flex-direction:column !important;height:auto !important;overflow-y:auto !important;-webkit-overflow-scrolling:touch !important;}
-  .pos-cart{width:100% !important;min-width:unset !important;max-height:none !important;height:auto !important;}
-  .cart-items{max-height:180px !important;}
+/* Modal box fits inside viewport */
+.modal {
+  max-height: none !important;
+  overflow-y: visible !important;
+  margin: auto !important;
+  flex-shrink: 0 !important;
 }
 
-/* Short screens (height < 800px) */
-@media(max-height:800px){
-  .cart-items{max-height:90px !important;min-height:40px !important;}
-  .cart-totals{padding:3px 14px !important;}
-  .total-row{padding:1px 0 !important;}
-  .discount-row{padding:2px 0 !important;}
-  .total-row.grand{padding-top:4px !important;}
-  .payment-section{padding:4px 14px 7px !important;}
-  .payment-methods{margin-bottom:4px !important;}
-  .pm-btn{padding:6px 4px !important;}
-  .checkout-btn{padding:9px !important;min-height:40px !important;}
-  .payment-label{margin-bottom:4px !important;}
+/* Modal body scrolls internally if too tall */
+.modal-body {
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  max-height: 60vh !important;
 }
 
-/* iOS Safari */
-@supports(-webkit-touch-callout:none){
-  #pos-screen.active{height:calc(100vh - 50px) !important;}
-  .pos-cart{max-height:calc(100vh - 80px) !important;height:calc(100vh - 80px) !important;}
-  .cart-items{overflow-y:scroll !important;-webkit-overflow-scrolling:touch !important;flex:1 1 0 !important;min-height:0 !important;}
+/* Header and footer always visible */
+.modal-header {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 3 !important;
+  flex-shrink: 0 !important;
+}
+.modal-footer {
+  position: sticky !important;
+  bottom: 0 !important;
+  z-index: 3 !important;
+  flex-shrink: 0 !important;
+}
+
+/* iPad landscape — modal fits screen */
+@media (min-width: 768px) and (max-width: 1366px) {
+  .modal-overlay.open {
+    padding: 12px !important;
+  }
+  .modal {
+    width: 480px !important;
+    max-width: 92vw !important;
+  }
+  .modal-body {
+    max-height: 55vh !important;
+  }
+}
+
+/* iPad portrait — modal takes full width */
+@media (max-width: 900px) and (orientation: portrait) {
+  .modal {
+    width: 96vw !important;
+    max-width: 96vw !important;
+  }
+  .modal-body {
+    max-height: 50vh !important;
+  }
+}
+
+/* iOS Safari modal fix */
+@supports (-webkit-touch-callout: none) {
+  .modal-overlay.open {
+    align-items: flex-start !important;
+    padding-top: 20px !important;
+    overflow-y: scroll !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .modal {
+    max-height: none !important;
+    margin-bottom: 20px !important;
+  }
+  .modal-body {
+    overflow-y: scroll !important;
+    -webkit-overflow-scrolling: touch !important;
+    max-height: 50vh !important;
+  }
 }
 
 </style>
