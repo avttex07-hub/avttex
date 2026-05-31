@@ -76,6 +76,7 @@ html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);heigh
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  min-height: 0;
 }
 
 #sidebar-nav::-webkit-scrollbar {
@@ -91,7 +92,7 @@ html,body{font-family:var(--font);background:var(--bg0);color:var(--text0);heigh
   
 /* LAYOUT */
 #app{display:flex;height:100vh;overflow:hidden;}
-#sidebar{width:224px;min-width:224px;background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;transition:width var(--transition);overflow:hidden;}
+#sidebar{width:224px;min-width:224px;background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100;transition:width var(--transition);overflow:hidden;height:100vh;}
 .sidebar-brand{padding:18px 18px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
 .brand-logo{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
 .brand-name{font-size:14px;font-weight:700;color:var(--text0);letter-spacing:-0.3px;line-height:1.2;font-family:var(--heading);}
@@ -471,46 +472,52 @@ textarea.form-control{resize:vertical;min-height:60px;}
       <div class="brand-sub">Collection · POS</div>
     </div>
   </div>
+
+  <!-- ALL nav sections wrapped in ONE scrollable div -->
   <div id="sidebar-nav">
-  <div class="nav-section">
-    <div class="nav-label">Main</div>
-    <div class="nav-item active" onclick="navigate('dashboard')"><span class="nav-icon">📊</span><span>Dashboard</span></div>
-    <div class="nav-item" onclick="navigate('pos')"><span class="nav-icon">🛒</span><span>New Sale</span></div>
-  </div>
-  <div id="sidebar-nav">  
-  <div class="nav-section">
-    <div class="nav-label">Operations</div>
-    <div class="nav-item" onclick="navigate('inventory')"><span class="nav-icon">📦</span><span>Inventory</span></div>
-    <div class="nav-item" onclick="navigate('customers')"><span class="nav-icon">👥</span><span>Customers</span></div>
-    <div class="nav-item" onclick="navigate('invoices')"><span class="nav-icon">🧾</span><span>Invoices</span></div>
-    <div class="nav-item" onclick="navigate('returns')"><span class="nav-icon">↩️</span><span>Returns</span></div>
-    <div class="nav-item" onclick="navigate('expenses')"><span class="nav-icon">💸</span><span>Expenses</span></div>
-  </div>
-  <div id="sidebar-nav">  
-  <div class="nav-section">
-    <div class="nav-label">Insights</div>
-    <div class="nav-item" onclick="navigate('reports')"><span class="nav-icon">📈</span><span>Reports</span></div>
-    <div class="nav-item" onclick="navigate('eod')"><span class="nav-icon">🏦</span><span>Cash Drawer</span></div>
-  </div>
-  <div id="sidebar-nav">  
-  <div class="nav-section">
-    <div class="nav-label">Admin</div>
-    <div class="nav-item" onclick="navigate('staff')"><span class="nav-icon">👤</span><span>Staff</span></div>
-    <div class="nav-item" onclick="navigate('settings')"><span class="nav-icon">⚙️</span><span>Settings</span></div>
-  </div>
-    
-  <div id="sidebar-nav">
+
+    <div class="nav-section">
+      <div class="nav-label">Main</div>
+      <div class="nav-item active" onclick="navigate('dashboard')"><span class="nav-icon">📊</span><span>Dashboard</span></div>
+      <div class="nav-item" onclick="navigate('pos')"><span class="nav-icon">🛒</span><span>New Sale</span></div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Operations</div>
+      <div class="nav-item" onclick="navigate('inventory')"><span class="nav-icon">📦</span><span>Inventory</span></div>
+      <div class="nav-item" onclick="navigate('customers')"><span class="nav-icon">👥</span><span>Customers</span></div>
+      <div class="nav-item" onclick="navigate('invoices')"><span class="nav-icon">🧾</span><span>Invoices</span></div>
+      <div class="nav-item" onclick="navigate('returns')"><span class="nav-icon">↩️</span><span>Returns</span></div>
+      <div class="nav-item" onclick="navigate('expenses')"><span class="nav-icon">💸</span><span>Expenses</span></div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Insights</div>
+      <div class="nav-item" onclick="navigate('reports')"><span class="nav-icon">📈</span><span>Reports</span></div>
+      <div class="nav-item" onclick="navigate('eod')"><span class="nav-icon">🏦</span><span>Cash Drawer</span></div>
+    </div>
+
     <div class="nav-section">
       <div class="nav-label">Stock</div>
       <div class="nav-item" onclick="navigate('po')"><span class="nav-icon">📋</span><span>Purchase Orders</span></div>
     </div>
-    <div id="sidebar-nav">
+
     <div class="nav-section">
       <div class="nav-label">System</div>
-      <div class="nav-item" onclick="navigate('notifications')" style="position:relative"><span class="nav-icon">🔔</span><span>Alerts</span><span class="nav-badge" id="alert-badge" style="display:none">0</span></div>
+      <div class="nav-item" onclick="navigate('notifications')" style="position:relative">
+        <span class="nav-icon">🔔</span><span>Alerts</span>
+        <span class="nav-badge" id="alert-badge" style="display:none">0</span>
+      </div>
     </div>
-  </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Admin</div>
+      <div class="nav-item" onclick="navigate('staff')"><span class="nav-icon">👤</span><span>Staff</span></div>
+      <div class="nav-item" onclick="navigate('settings')"><span class="nav-icon">⚙️</span><span>Settings</span></div>
+    </div>
+
   </div><!-- /sidebar-nav -->
+
   <div class="sidebar-footer">
     <div class="staff-info" onclick="navigate('settings')">
       <div class="staff-avatar" id="sb-avatar">RM</div>
