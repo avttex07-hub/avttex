@@ -471,11 +471,13 @@ textarea.form-control{resize:vertical;min-height:60px;}
       <div class="brand-sub">Collection · POS</div>
     </div>
   </div>
+  <div id="sidebar-nav">
   <div class="nav-section">
     <div class="nav-label">Main</div>
     <div class="nav-item active" onclick="navigate('dashboard')"><span class="nav-icon">📊</span><span>Dashboard</span></div>
     <div class="nav-item" onclick="navigate('pos')"><span class="nav-icon">🛒</span><span>New Sale</span></div>
   </div>
+  <div id="sidebar-nav">  
   <div class="nav-section">
     <div class="nav-label">Operations</div>
     <div class="nav-item" onclick="navigate('inventory')"><span class="nav-icon">📦</span><span>Inventory</span></div>
@@ -484,26 +486,31 @@ textarea.form-control{resize:vertical;min-height:60px;}
     <div class="nav-item" onclick="navigate('returns')"><span class="nav-icon">↩️</span><span>Returns</span></div>
     <div class="nav-item" onclick="navigate('expenses')"><span class="nav-icon">💸</span><span>Expenses</span></div>
   </div>
+  <div id="sidebar-nav">  
   <div class="nav-section">
     <div class="nav-label">Insights</div>
     <div class="nav-item" onclick="navigate('reports')"><span class="nav-icon">📈</span><span>Reports</span></div>
     <div class="nav-item" onclick="navigate('eod')"><span class="nav-icon">🏦</span><span>Cash Drawer</span></div>
   </div>
+  <div id="sidebar-nav">  
   <div class="nav-section">
     <div class="nav-label">Admin</div>
     <div class="nav-item" onclick="navigate('staff')"><span class="nav-icon">👤</span><span>Staff</span></div>
     <div class="nav-item" onclick="navigate('settings')"><span class="nav-icon">⚙️</span><span>Settings</span></div>
   </div>
-  
+    
+  <div id="sidebar-nav">
     <div class="nav-section">
       <div class="nav-label">Stock</div>
       <div class="nav-item" onclick="navigate('po')"><span class="nav-icon">📋</span><span>Purchase Orders</span></div>
     </div>
+    <div id="sidebar-nav">
     <div class="nav-section">
       <div class="nav-label">System</div>
       <div class="nav-item" onclick="navigate('notifications')" style="position:relative"><span class="nav-icon">🔔</span><span>Alerts</span><span class="nav-badge" id="alert-badge" style="display:none">0</span></div>
     </div>
-
+  </div>
+  </div><!-- /sidebar-nav -->
   <div class="sidebar-footer">
     <div class="staff-info" onclick="navigate('settings')">
       <div class="staff-avatar" id="sb-avatar">RM</div>
