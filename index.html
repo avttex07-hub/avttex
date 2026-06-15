@@ -1095,7 +1095,6 @@ textarea.form-control{resize:vertical;min-height:60px;}
     <div class="modal-body">
       <div class="form-group"><label class="form-label">Full Name *</label><input type="text" class="form-control" id="st-name" placeholder="Staff name"></div>
       <div class="form-row"><div class="form-group"><label class="form-label">Phone</label><input type="text" class="form-control" id="st-phone"></div><div class="form-group"><label class="form-label">Role</label><select class="form-control" id="st-role"><option>Cashier</option><option>Sales Staff</option><option>Manager</option><option>Owner</option></select></div></div>
-      <div class="form-group"><label class="form-label">PIN (4-digit login)</label><input type="number" class="form-control" id="st-pin" placeholder="1234" maxlength="4"></div>
     </div>
     <div class="modal-footer"><button class="btn" onclick="closeModal('add-staff-modal')">Cancel</button><button class="btn btn-primary" onclick="saveStaff()">Add Staff</button></div>
   </div>
@@ -1223,8 +1222,8 @@ function seedIfEmpty() {
     {id:'C003',name:'Meena Krishnan',phone:'9123456789',email:'meena@email.com',address:'Tambaram',gstin:'',purchases:0,created:new Date().toISOString()},
   ]);
   save(K.staff, [
-    {id:'S001',name:'Raghul Micky',phone:'9999900000',role:'Manager',pin:'1234',active:true,joined:new Date().toISOString()},
-    {id:'S002',name:'Lakshmi Devi',phone:'9111122222',role:'Cashier',pin:'5678',active:true,joined:new Date().toISOString()},
+    {id:'S001',name:'Raghul Micky',phone:'9999900000',role:'Manager',active:true,joined:new Date().toISOString()},
+    {id:'S002',name:'Lakshmi Devi',phone:'9111122222',role:'Cashier',active:true,joined:new Date().toISOString()},
   ]);
 }
 
@@ -2044,11 +2043,11 @@ function renderStaff(){
       <button class="btn btn-danger btn-sm btn-icon" onclick="deleteStaff('${s.id}')" style="margin-left:auto">🗑</button>
     </div>`).join('');
 }
-function openAddStaffModal(){ ['st-name','st-phone','st-pin'].forEach(id=>g(id).value=''); openModal('add-staff-modal'); }
+function openAddStaffModal(){ ['st-name','st-phone'].forEach(id=>g(id).value=''); openModal('add-staff-modal'); }
 function saveStaff(){
   const name=g('st-name').value.trim(); if(!name){ showToast('Name required','error'); return; }
   const staff=load(K.staff);
-  staff.push({id:'S'+Date.now(),name,phone:g('st-phone').value.trim(),role:g('st-role').value,pin:g('st-pin').value,active:true,joined:new Date().toISOString()});
+  staff.push({id:'S'+Date.now(),name,phone:g('st-phone').value.trim(),role:g('st-role').value,active:true,joined:new Date().toISOString()});
   save(K.staff,staff); closeModal('add-staff-modal'); renderStaff();
   showToast('✅ Staff member added','success');
 }
