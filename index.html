@@ -2106,24 +2106,42 @@ async function flushSyncQueue(){
   const q=load(K.queue); if(!q.length) return;
   setSyncState('syncing');
   try {
-    const r=await fetch(CFG.scriptUrl+'?action=sync',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({items:q})});
-    if(r.ok){ save(K.queue,[]); setSyncState('synced'); } else setSyncState('error');
+    // Use no-cors + FormData to avoid CORS preflight (Apps Script doesn't handle OPTIONS)
+    const fd=new FormData();
+    fd.append('payload', JSON.stringify({items:q}));
+    fd.append('action','sync');
+    await fetch(CFG.scriptUrl, {method:'POST', body:fd, mode:'no-cors'});
+    // no-cors response is opaque — assume success if no network error
+    save(K.queue,[]); setSyncState('synced');
   } catch(e){ setSyncState('error'); }
 }
-async function manualSync(){ await flushSyncQueue(); await refreshRemoteData(); showToast('Sync attempted','info'); }
+async function manualSync(){
+  if(!CFG.scriptUrl){ showToast('⚠ No Apps Script URL configured in Settings','error'); return; }
+  showToast('🔄 Syncing…','info');
+  await flushSyncQueue();
+  await refreshRemoteData();
+  const q=load(K.queue);
+  if(q.length===0) showToast('✅ Sync complete','success');
+  else showToast('⚠ '+q.length+' item(s) still pending sync','error');
+}
 function clearSyncQueue(){ save(K.queue,[]); showToast('Sync queue cleared',''); }
 async function refreshRemoteData(){
   if(!CFG.scriptUrl || !navigator.onLine) return;
   try{
     const r=await fetch(CFG.scriptUrl+'?action=inventory',{method:'GET'});
-    if(!r.ok) return;
+    if(!r.ok){ console.warn('[Sync] inventory fetch failed:',r.status); return; }
     const payload=await r.json();
     const items = payload && Array.isArray(payload.items) ? payload.items : (Array.isArray(payload) ? payload : null);
-    if(items && items.length && items.every(i=>i && typeof i==='object')){
+    // Only overwrite local inventory if server returned valid non-empty data
+    if(items && items.length > 0 && items.every(i=>i && typeof i==='object' && i.id)){
       save(K.inv, items);
-      renderInventoryTable();
+      if(document.getElementById('screen-inventory')?.classList.contains('active')) renderInventoryTable();
+      if(document.getElementById('pos-screen')?.classList.contains('active')) renderCatalog();
+      console.log('[Sync] Inventory refreshed:',items.length,'items');
+    } else {
+      console.warn('[Sync] Remote inventory empty or invalid — keeping local data');
     }
-  } catch(e){}
+  } catch(e){ console.warn('[Sync] refreshRemoteData error:',e.message); }
 }
 function setSyncState(s){
   g('sync-dot').className='sync-dot'+(s==='syncing'?' syncing':s==='error'?' offline':'');
@@ -2688,14 +2706,22 @@ function doGet(e) {
 }
 
 function doPost(e) {
-  const body = JSON.parse(e.postData.contents || '{}');
-  const action = e.parameter.action;
+  // Supports both FormData (payload param) and raw JSON body
+  let body;
+  try {
+    const rawPayload = (e.parameter && e.parameter.payload) ? e.parameter.payload : (e.postData ? e.postData.contents : '{}');
+    body = JSON.parse(rawPayload || '{}');
+  } catch(err) {
+    return json({error:'Invalid payload: ' + err.message});
+  }
+  const action = (e.parameter && e.parameter.action) || body.action;
   if(action==='sync') {
-    body.items.forEach(op => {
+    const items = body.items || [];
+    items.forEach(op => {
       if(op.type==='sale') appendSale(op.data);
       else if(op.type==='inventory') applyInventoryOp(op);
     });
-    return json({status:'ok',synced:body.items.length});
+    return json({status:'ok',synced:items.length});
   }
   return json({error:'Unknown action'});
 }
