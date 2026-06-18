@@ -1676,15 +1676,28 @@ function saveItem(){
   const itemData={name,category:cat,emoji:g('fi-emoji').value||'👗',sku:g('fi-sku').value,price,
     cost:parseFloat(g('fi-cost').value)||0,stock,reorder:parseInt(g('fi-reorder').value)||5,
     gst:parseInt(g('fi-gst').value)||0,hsn:g('fi-hsn').value,notes:g('fi-notes').value,active:true};
-  if(editingItemId){ const idx=inv.findIndex(i=>i.id===editingItemId); if(idx!==-1) inv[idx]={...inv[idx],...itemData}; }
-  else inv.push({id:'ITM'+Date.now(),...itemData});
-  save(K.inv,inv); closeModal('add-item-modal'); renderInventoryTable();
+  let savedItem;
+  if(editingItemId){
+    const idx=inv.findIndex(i=>i.id===editingItemId);
+    if(idx!==-1){ savedItem={...inv[idx],...itemData}; inv[idx]=savedItem; }
+  } else {
+    savedItem={id:'ITM'+Date.now(),...itemData};
+    inv.push(savedItem);
+  }
+  if(!savedItem) return;
+  save(K.inv,inv);
+  queueSync({type:'inventory',action:editingItemId?'update':'add',data:savedItem});
+  closeModal('add-item-modal');
+  renderInventoryTable();
   showToast(editingItemId?'✅ Item updated':'✅ Item added','success');
   editingItemId=null;
 }
 function deleteItem(id){
   if(!confirm('Delete item?')) return;
-  save(K.inv,load(K.inv).filter(i=>i.id!==id));
+  const inv=load(K.inv);
+  const item=inv.find(i=>i.id===id);
+  save(K.inv,inv.filter(i=>i.id!==id));
+  if(item) queueSync({type:'inventory',action:'delete',data:{id:item.id}});
   renderInventoryTable(); showToast('Item deleted','');
 }
 function openStockAdj(id){
@@ -1700,7 +1713,9 @@ function applyStockAdj(){
   if(type==='add') item.stock+=qty;
   else if(type==='remove') item.stock=Math.max(0,item.stock-qty);
   else item.stock=qty;
-  save(K.inv,inv); closeModal('stock-modal'); renderInventoryTable();
+  save(K.inv,inv);
+  queueSync({type:'inventory',action:'update',data:{...item}});
+  closeModal('stock-modal'); renderInventoryTable();
   showToast(`Stock updated: ${prev} → ${item.stock}`,'success');
 }
 function exportInventoryCSV(){
@@ -2095,8 +2110,21 @@ async function flushSyncQueue(){
     if(r.ok){ save(K.queue,[]); setSyncState('synced'); } else setSyncState('error');
   } catch(e){ setSyncState('error'); }
 }
-async function manualSync(){ await flushSyncQueue(); showToast('Sync attempted','info'); }
+async function manualSync(){ await flushSyncQueue(); await refreshRemoteData(); showToast('Sync attempted','info'); }
 function clearSyncQueue(){ save(K.queue,[]); showToast('Sync queue cleared',''); }
+async function refreshRemoteData(){
+  if(!CFG.scriptUrl || !navigator.onLine) return;
+  try{
+    const r=await fetch(CFG.scriptUrl+'?action=inventory',{method:'GET'});
+    if(!r.ok) return;
+    const payload=await r.json();
+    const items = payload && Array.isArray(payload.items) ? payload.items : (Array.isArray(payload) ? payload : null);
+    if(items && items.length && items.every(i=>i && typeof i==='object')){
+      save(K.inv, items);
+      renderInventoryTable();
+    }
+  } catch(e){}
+}
 function setSyncState(s){
   g('sync-dot').className='sync-dot'+(s==='syncing'?' syncing':s==='error'?' offline':'');
   g('sync-label').textContent=s==='syncing'?'Syncing…':s==='error'?'Sync error':'Synced';
@@ -2144,7 +2172,12 @@ function showToast(msg,type=''){
 function updateOnlineStatus(){
   const b=g('offline-banner');
   if(!navigator.onLine){ b.classList.add('show'); setSyncState('error'); }
-  else { b.classList.remove('show'); setSyncState('synced'); flushSyncQueue(); }
+  else {
+    b.classList.remove('show');
+    setSyncState('synced');
+    flushSyncQueue();
+    refreshRemoteData();
+  }
 }
 window.addEventListener('online',updateOnlineStatus);
 window.addEventListener('offline',updateOnlineStatus);
@@ -2167,7 +2200,7 @@ seedIfEmpty();
 loadSettings();
 renderDashboard();
 updateOnlineStatus();
-setTimeout(()=>{ if(navigator.onLine&&CFG.scriptUrl) flushSyncQueue(); },1200);
+setTimeout(()=>{ if(navigator.onLine&&CFG.scriptUrl){ flushSyncQueue(); refreshRemoteData(); } },1200);
 
 // ============================================================
 //  CHARTS — SVG-based (no library needed)
@@ -2649,17 +2682,18 @@ function showSheetsSetupGuide(){
 function doGet(e) {
   const action = e.parameter.action;
   if(action==='ping') return json({status:'ok',version:'1.0'});
-  if(action==='inventory') return json(getSheet('Inventory').getDataRange().getValues());
-  if(action==='sales') return json(getSheet('Sales').getDataRange().getValues());
+  if(action==='inventory') return json({items: getInventoryData()});
+  if(action==='sales') return json({items: getSalesData()});
   return json({error:'Unknown action'});
 }
 
 function doPost(e) {
-  const body = JSON.parse(e.postData.contents);
+  const body = JSON.parse(e.postData.contents || '{}');
   const action = e.parameter.action;
   if(action==='sync') {
-    body.items.forEach(item => {
-      if(item.type==='sale') appendSale(item.data);
+    body.items.forEach(op => {
+      if(op.type==='sale') appendSale(op.data);
+      else if(op.type==='inventory') applyInventoryOp(op);
     });
     return json({status:'ok',synced:body.items.length});
   }
@@ -2668,6 +2702,10 @@ function doPost(e) {
 
 function appendSale(sale) {
   const sheet = getSheet('Sales');
+  const data = sheet.getDataRange().getValues();
+  if(!data.length || data[0].join(',') !== 'Invoice,Date,Customer,Phone,Total,Payment,Status,GST,Discount') {
+    sheet.getRange(1,1,1,9).setValues([['Invoice','Date','Customer','Phone','Total','Payment','Status','GST','Discount']]);
+  }
   sheet.appendRow([
     sale.invoice, sale.date,
     sale.customer ? sale.customer.name : 'Walk-in',
@@ -2675,18 +2713,81 @@ function appendSale(sale) {
     sale.total, sale.payment, sale.status,
     sale.gst, sale.discount
   ]);
-  // Deduct stock
+
+  // Deduct stock from Inventory sheet
   const inv = getSheet('Inventory');
-  const data = inv.getDataRange().getValues();
+  const rows = inv.getDataRange().getValues();
+  if(rows.length < 2) return;
+  const headers = rows[0];
+  const idCol = headers.indexOf('id');
+  const stockCol = headers.indexOf('stock');
+  if(idCol === -1 || stockCol === -1) return;
+
   sale.items.forEach(item => {
-    for(let i=1;i<data.length;i++){
-      if(data[i][0]===item.id){
-        const newStock = Math.max(0, data[i][5]-item.qty);
-        inv.getRange(i+1,6).setValue(newStock);
+    for(let i=1;i<rows.length;i++){
+      if(rows[i][idCol] === item.id){
+        const newStock = Math.max(0, Number(rows[i][stockCol] || 0) - Number(item.qty || 0));
+        inv.getRange(i+1, stockCol+1).setValue(newStock);
         break;
       }
     }
   });
+}
+
+function applyInventoryOp(op) {
+  const inv = getSheet('Inventory');
+  const rows = inv.getDataRange().getValues();
+  if(!rows.length) {
+    inv.getRange(1,1,1,10).setValues([['id','name','category','emoji','sku','price','cost','stock','reorder','gst']]);
+  }
+  const headers = inv.getRange(1,1,1,inv.getLastColumn()).getValues()[0];
+  const idCol = headers.indexOf('id');
+  if(idCol === -1) return;
+
+  const data = op.data || {};
+  const rowIndex = rows.slice(1).findIndex(row => row[idCol] === data.id) + 2;
+
+  if(op.action === 'delete') {
+    if(rowIndex > 1) inv.deleteRow(rowIndex);
+    return;
+  }
+
+  const row = [
+    data.id || '',
+    data.name || '',
+    data.category || '',
+    data.emoji || '',
+    data.sku || '',
+    data.price || 0,
+    data.cost || 0,
+    data.stock || 0,
+    data.reorder || 5,
+    data.gst || 0
+  ];
+
+  if(rowIndex > 1) {
+    inv.getRange(rowIndex, 1, 1, row.length).setValues([row]);
+  } else {
+    inv.appendRow(row);
+  }
+}
+
+function getInventoryData() {
+  const rows = getSheet('Inventory').getDataRange().getValues();
+  if(!rows.length) return [];
+  const headers = rows[0];
+  return rows.slice(1)
+    .filter(row => row.some(cell => cell !== ''))
+    .map(row => Object.fromEntries(headers.map((h,i) => [h, row[i]])));
+}
+
+function getSalesData() {
+  const rows = getSheet('Sales').getDataRange().getValues();
+  if(!rows.length) return [];
+  const headers = rows[0];
+  return rows.slice(1)
+    .filter(row => row.some(cell => cell !== ''))
+    .map(row => Object.fromEntries(headers.map((h,i) => [h, row[i]])));
 }
 
 function getSheet(name) {
