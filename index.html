@@ -2237,6 +2237,21 @@ renderDashboard();
 updateOnlineStatus();
 setTimeout(()=>{ if(navigator.onLine&&CFG.scriptUrl){ flushSyncQueue(); refreshRemoteData(); } },1200);
 
+// Background auto-refresh — keeps Inventory/POS fresh every 60s without manual action
+setInterval(()=>{
+  if(!navigator.onLine || !CFG.scriptUrl) return;
+  const onInventory = document.getElementById('screen-inventory')?.classList.contains('active');
+  const onPOS = document.getElementById('pos-screen')?.classList.contains('active');
+  if(onInventory || onPOS){
+    flushSyncQueue().then(refreshRemoteData);
+  }
+}, 60000);
+
+// Also refresh immediately whenever the device regains internet connection
+window.addEventListener('online', ()=>{
+  if(CFG.scriptUrl) setTimeout(()=>{ flushSyncQueue().then(refreshRemoteData); }, 800);
+});
+
 // ============================================================
 //  CHARTS — SVG-based (no library needed)
 // ============================================================
