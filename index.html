@@ -960,15 +960,14 @@ textarea.form-control{resize:vertical;min-height:60px;}
     <div class="settings-section">
       <div class="settings-section-title">🔗 Google Sheets Sync</div>
       <div class="form-group"><label class="form-label">Apps Script Web App URL</label><input type="text" class="form-control" id="set-script-url" placeholder="https://script.google.com/macros/s/…/exec"></div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Paste your deployed Google Apps Script URL to enable cloud sync. All sales, inventory, and customers will sync automatically.</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">Paste your deployed Google Apps Script URL to enable cloud sync. Everything — inventory, sales, customers, expenses, staff, returns, EOD, purchase orders, and settings — syncs automatically across all your devices.</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-primary" onclick="saveScriptUrl()">Save & Test Connection</button>
         <button class="btn" onclick="manualSync()">🔄 Sync Now</button>
-        <button class="btn" onclick="pushAllInventory()">⬆ Push All Inventory to Sheet</button>
-        <button class="btn" onclick="pushAllCustomers()">⬆ Push All Customers to Sheet</button>
+        <button class="btn" onclick="pushEverything()">⬆ Push All Local Data to Sheet</button>
         <button class="btn btn-danger btn-sm" onclick="clearSyncQueue()">Clear Queue</button>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:6px;">Use the "Push All" buttons once to send your existing local data to a blank Sheet — only needed the first time, or if data goes out of sync.</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px;">Use "Push All Local Data" once on the device with your existing data, to seed a blank Sheet. After that, "Sync Now" keeps everything up to date both ways.</div>
       <div id="sync-test-result" style="margin-top:10px;font-size:12px;"></div>
     </div>
     <div class="settings-section">
@@ -1188,12 +1187,14 @@ function saveSettings() {
   CFG.address = g('set-address').value.trim();
   CFG.footer = g('set-footer').value.trim();
   save(K.settings, CFG);
+  queueSync({type:'settings',action:'update',data:{gstRate:CFG.gstRate,invoicePrefix:CFG.invPrefix,storeName:CFG.storeName,storeAddress:CFG.address,receiptFooter:CFG.footer}});
   showToast('✅ Store settings saved','success');
 }
 function saveTaxSettings() {
   CFG.gstRate = parseInt(g('set-gst').value);
   CFG.invPrefix = g('set-inv-prefix').value.trim() || 'INV-';
   save(K.settings, CFG);
+  queueSync({type:'settings',action:'update',data:{gstRate:CFG.gstRate,invoicePrefix:CFG.invPrefix,storeName:CFG.storeName,storeAddress:CFG.address,receiptFooter:CFG.footer}});
   showToast('✅ Tax settings saved','success');
 }
 function saveScriptUrl() {
@@ -1284,6 +1285,13 @@ function navigate(page) {
   if(page==='customers' && CFG.scriptUrl && navigator.onLine){
     refreshCustomers().then(()=>renderCustomers());
   }
+  // Pull fresh data for remaining screens
+  if(page==='expenses' && CFG.scriptUrl && navigator.onLine){ refreshExpenses().then(()=>renderExpenses()); }
+  if(page==='staff' && CFG.scriptUrl && navigator.onLine){ refreshStaff().then(()=>renderStaff()); }
+  if(page==='returns' && CFG.scriptUrl && navigator.onLine){ refreshReturns().then(()=>renderReturns()); }
+  if(page==='eod' && CFG.scriptUrl && navigator.onLine){ refreshEOD().then(()=>renderEODHistory()); }
+  if(page==='po' && CFG.scriptUrl && navigator.onLine){ refreshPO().then(()=>renderPO()); }
+  if(page==='settings' && CFG.scriptUrl && navigator.onLine){ refreshSettings().then(()=>loadSettings()); }
 }
 
 // ============================================================
@@ -1887,6 +1895,7 @@ function processReturn(){
     reason, refundMethod, status:'return'
   };
   const returns=load(K.returns); returns.unshift(returnRecord); save(K.returns,returns);
+  queueSync({type:'return',action:'add',data:{id:returnRecord.id,invoice:returnRecord.invoice,items:returnRecord.items,refundAmount:returnRecord.total,date:returnRecord.date}});
   // Update original sale status
   const sales=load(K.sales);
   const orig=sales.find(s=>s.id===returnSale.id);
@@ -1952,8 +1961,10 @@ function saveExpense(){
   const desc=g('exp-desc').value.trim(),amount=parseFloat(g('exp-amount').value);
   if(!desc||isNaN(amount)||amount<=0){ showToast('Fill description and amount','error'); return; }
   const expenses=load(K.expenses);
-  expenses.push({id:'EXP-'+Date.now(),desc,category:g('exp-cat').value,amount,payment:g('exp-pay').value,date:g('exp-date').value||new Date().toISOString().split('T')[0],remark:g('exp-remark').value.trim(),created:new Date().toISOString()});
+  const exp={id:'EXP-'+Date.now(),desc,category:g('exp-cat').value,amount,payment:g('exp-pay').value,date:g('exp-date').value||new Date().toISOString().split('T')[0],remark:g('exp-remark').value.trim(),created:new Date().toISOString()};
+  expenses.push(exp);
   save(K.expenses,expenses); closeModal('expense-modal'); renderExpenses();
+  queueSync({type:'expense',action:'add',data:exp});
   showToast('💸 Expense recorded','success');
 }
 
@@ -2059,8 +2070,10 @@ function saveEOD(){
   const totalSales=todaySales.reduce((s,x)=>s+x.total,0);
   const totalExp=expenses.filter(e=>new Date(e.date).toDateString()===today).reduce((s,e)=>s+e.amount,0);
   const eodReports=load(K.eod);
-  eodReports.unshift({id:'EOD-'+Date.now(),date:new Date().toISOString(),opening:parseFloat(g('eod-opening')?.value)||0,counted:parseFloat(g('eod-counted')?.value)||0,totalSales,totalExp,net:totalSales-totalExp,transactions:todaySales.length,notes:g('eod-notes')?.value||''});
+  const rec={id:'EOD-'+Date.now(),date:new Date().toISOString(),opening:parseFloat(g('eod-opening')?.value)||0,counted:parseFloat(g('eod-counted')?.value)||0,totalSales,totalExp,net:totalSales-totalExp,transactions:todaySales.length,notes:g('eod-notes')?.value||''};
+  eodReports.unshift(rec);
   save(K.eod,eodReports); renderEODHistory();
+  queueSync({type:'eod',action:'add',data:rec});
   showToast('✅ EOD report saved','success');
 }
 function renderEODHistory(){
@@ -2101,13 +2114,16 @@ function openAddStaffModal(){ ['st-name','st-phone'].forEach(id=>g(id).value='')
 function saveStaff(){
   const name=g('st-name').value.trim(); if(!name){ showToast('Name required','error'); return; }
   const staff=load(K.staff);
-  staff.push({id:'S'+Date.now(),name,phone:g('st-phone').value.trim(),role:g('st-role').value,active:true,joined:new Date().toISOString()});
+  const s={id:'S'+Date.now(),name,phone:g('st-phone').value.trim(),role:g('st-role').value,active:true,joined:new Date().toISOString()};
+  staff.push(s);
   save(K.staff,staff); closeModal('add-staff-modal'); renderStaff();
+  queueSync({type:'staff',action:'add',data:s});
   showToast('✅ Staff member added','success');
 }
 function deleteStaff(id){
   if(!confirm('Remove staff member?')) return;
   save(K.staff,load(K.staff).filter(s=>s.id!==id)); renderStaff();
+  queueSync({type:'staff',action:'delete',data:{id}});
 }
 
 // ============================================================
@@ -2117,42 +2133,33 @@ function queueSync(op){
   const q=load(K.queue); q.push({...op,ts:Date.now()}); save(K.queue,q);
   if(navigator.onLine&&CFG.scriptUrl) flushSyncQueue();
 }
-async function pushAllInventory(){
+async function pushEverything(){
   if(!CFG.scriptUrl){ showToast('⚠ No Apps Script URL configured','error'); return; }
-  const items = load(K.inv);
-  if(!items.length){ showToast('No inventory items to push','error'); return; }
-  showToast('⬆ Pushing '+items.length+' items…','info');
+  const ops = [];
+  load(K.inv).forEach(item => ops.push({type:'inventory', action:'upsert', data:item, ts:Date.now()}));
+  load(K.custs).forEach(c => ops.push({type:'customer', action:'upsert',
+    data:{id:c.id,name:c.name,phone:c.phone,purchases:c.purchases||0,createdAt:c.created||''}, ts:Date.now()}));
+  load(K.expenses).forEach(e => ops.push({type:'expense', action:'upsert', data:e, ts:Date.now()}));
+  load(K.staff).forEach(s => ops.push({type:'staff', action:'upsert', data:s, ts:Date.now()}));
+  load(K.returns).forEach(r => ops.push({type:'return', action:'upsert',
+    data:{id:r.id,invoice:r.invoice,items:r.items,refundAmount:r.total,date:r.date}, ts:Date.now()}));
+  load(K.eod).forEach(e => ops.push({type:'eod', action:'upsert', data:e, ts:Date.now()}));
+  load(K.po||'pos_v2_po').forEach(p => ops.push({type:'po', action:'upsert',
+    data:{id:p.id,supplier:p.supplier,items:p.items,status:p.status,date:p.created}, ts:Date.now()}));
+  ops.push({type:'settings', action:'update',
+    data:{gstRate:CFG.gstRate,invoicePrefix:CFG.invPrefix,storeName:CFG.storeName,storeAddress:CFG.address,receiptFooter:CFG.footer}, ts:Date.now()});
+
+  if(!ops.length){ showToast('No local data to push','error'); return; }
+  showToast('⬆ Pushing '+ops.length+' records…','info');
   setSyncState('syncing');
   try{
-    const ops = items.map(item => ({type:'inventory', action:'upsert', data:item, ts:Date.now()}));
     const fd=new FormData();
     fd.append('payload', JSON.stringify({items:ops}));
     fd.append('action','sync');
     await fetch(CFG.scriptUrl, {method:'POST', body:fd, mode:'no-cors'});
     snum(K.lastSync, Date.now());
     setSyncState('synced');
-    showToast('✅ Pushed '+items.length+' items — check your Google Sheet','success');
-  } catch(e){
-    setSyncState('error');
-    showToast('⚠ Push failed: '+e.message,'error');
-  }
-}
-async function pushAllCustomers(){
-  if(!CFG.scriptUrl){ showToast('⚠ No Apps Script URL configured','error'); return; }
-  const custs = load(K.custs);
-  if(!custs.length){ showToast('No customers to push','error'); return; }
-  showToast('⬆ Pushing '+custs.length+' customers…','info');
-  setSyncState('syncing');
-  try{
-    const ops = custs.map(c => ({type:'customer', action:'upsert',
-      data:{id:c.id,name:c.name,phone:c.phone,purchases:c.purchases||0,createdAt:c.created||''}, ts:Date.now()}));
-    const fd=new FormData();
-    fd.append('payload', JSON.stringify({items:ops}));
-    fd.append('action','sync');
-    await fetch(CFG.scriptUrl, {method:'POST', body:fd, mode:'no-cors'});
-    snum(K.lastSync, Date.now());
-    setSyncState('synced');
-    showToast('✅ Pushed '+custs.length+' customers — check your Google Sheet','success');
+    showToast('✅ Pushed '+ops.length+' records — check your Google Sheet','success');
   } catch(e){
     setSyncState('error');
     showToast('⚠ Push failed: '+e.message,'error');
@@ -2177,12 +2184,20 @@ async function flushSyncQueue(){
 }
 async function manualSync(){
   if(!CFG.scriptUrl){ showToast('⚠ No Apps Script URL configured in Settings','error'); return; }
-  showToast('🔄 Syncing…','info');
+  showToast('🔄 Syncing everything…','info');
   await flushSyncQueue();
-  await refreshRemoteData();
-  await refreshCustomers();
+  await Promise.all([
+    refreshRemoteData(), refreshCustomers(), refreshExpenses(),
+    refreshStaff(), refreshReturns(), refreshEOD(), refreshPO(), refreshSettings()
+  ]);
+  // Re-render whichever screen is currently visible so changes show immediately
+  const renders = {dashboard:renderDashboard,inventory:renderInventoryTable,pos:renderCatalog,customers:renderCustomers,returns:renderReturns,expenses:renderExpenses,eod:renderEODHistory,staff:renderStaff,po:renderPO,settings:loadSettings};
+  for(const page in renders){
+    const el = document.getElementById('screen-'+page) || document.getElementById(page+'-screen');
+    if(el?.classList.contains('active')) renders[page]();
+  }
   const q=load(K.queue);
-  if(q.length===0) showToast('✅ Sync complete','success');
+  if(q.length===0) showToast('✅ Everything synced','success');
   else showToast('⚠ '+q.length+' item(s) still pending sync','error');
 }
 function clearSyncQueue(){ save(K.queue,[]); showToast('Sync queue cleared',''); }
@@ -2228,6 +2243,109 @@ async function refreshCustomers(){
       console.warn('[Sync] Remote customers empty or invalid — keeping local data');
     }
   } catch(e){ console.warn('[Sync] refreshCustomers error:',e.message); }
+}
+async function refreshExpenses(){
+  if(!CFG.scriptUrl || !navigator.onLine) return;
+  try{
+    const r=await fetch(CFG.scriptUrl+'?action=expenses',{method:'GET'});
+    if(!r.ok) return;
+    const payload=await r.json();
+    const items = payload && Array.isArray(payload.items) ? payload.items : null;
+    if(items && items.length > 0 && items.every(i=>i && i.id)){
+      save(K.expenses, items.map(e=>({...e, amount:Number(e.amount)||0})));
+      snum(K.lastSync, Date.now());
+      if(document.getElementById('screen-expenses')?.classList.contains('active')) renderExpenses();
+    }
+  } catch(e){ console.warn('[Sync] refreshExpenses error:',e.message); }
+}
+async function refreshStaff(){
+  if(!CFG.scriptUrl || !navigator.onLine) return;
+  try{
+    const r=await fetch(CFG.scriptUrl+'?action=staff',{method:'GET'});
+    if(!r.ok) return;
+    const payload=await r.json();
+    const items = payload && Array.isArray(payload.items) ? payload.items : null;
+    if(items && items.length > 0 && items.every(i=>i && i.id)){
+      save(K.staff, items);
+      snum(K.lastSync, Date.now());
+      if(document.getElementById('screen-staff')?.classList.contains('active')) renderStaff();
+    }
+  } catch(e){ console.warn('[Sync] refreshStaff error:',e.message); }
+}
+async function refreshReturns(){
+  if(!CFG.scriptUrl || !navigator.onLine) return;
+  try{
+    const r=await fetch(CFG.scriptUrl+'?action=returns',{method:'GET'});
+    if(!r.ok) return;
+    const payload=await r.json();
+    const items = payload && Array.isArray(payload.items) ? payload.items : null;
+    if(items && items.length > 0 && items.every(i=>i && i.id)){
+      const local = load(K.returns);
+      const merged = items.map(remote=>{
+        const existing = local.find(r=>r.id===remote.id) || {};
+        return {...existing, id:remote.id, invoice:remote.invoice, items:remote.items||[], total:Number(remote.refundAmount)||0, date:remote.date||existing.date};
+      });
+      save(K.returns, merged);
+      snum(K.lastSync, Date.now());
+      if(document.getElementById('screen-returns')?.classList.contains('active')) renderReturns();
+    }
+  } catch(e){ console.warn('[Sync] refreshReturns error:',e.message); }
+}
+async function refreshEOD(){
+  if(!CFG.scriptUrl || !navigator.onLine) return;
+  try{
+    const r=await fetch(CFG.scriptUrl+'?action=eod',{method:'GET'});
+    if(!r.ok) return;
+    const payload=await r.json();
+    const items = payload && Array.isArray(payload.items) ? payload.items : null;
+    if(items && items.length > 0 && items.every(i=>i && i.id)){
+      save(K.eod, items.map(e=>({...e, opening:Number(e.opening)||0, counted:Number(e.counted)||0, totalSales:Number(e.totalSales)||0, totalExp:Number(e.totalExp)||0, net:Number(e.net)||0, transactions:Number(e.transactions)||0})));
+      snum(K.lastSync, Date.now());
+      if(document.getElementById('screen-eod')?.classList.contains('active')) renderEODHistory();
+    }
+  } catch(e){ console.warn('[Sync] refreshEOD error:',e.message); }
+}
+async function refreshPO(){
+  if(!CFG.scriptUrl || !navigator.onLine) return;
+  try{
+    const r=await fetch(CFG.scriptUrl+'?action=purchaseorders',{method:'GET'});
+    if(!r.ok) return;
+    const payload=await r.json();
+    const items = payload && Array.isArray(payload.items) ? payload.items : null;
+    if(items && items.length > 0 && items.every(i=>i && i.id)){
+      const local = load(K.po||'pos_v2_po');
+      const merged = items.map(remote=>{
+        const existing = local.find(p=>p.id===remote.id) || {};
+        const total = (remote.items||[]).reduce((s,i)=>s+(i.qty||0)*(i.cost||0),0);
+        return {...existing, id:remote.id, supplier:remote.supplier, items:remote.items||[], status:remote.status||'pending', created:remote.date||existing.created, total:existing.total||total};
+      });
+      save(K.po||'pos_v2_po', merged);
+      snum(K.lastSync, Date.now());
+      if(document.getElementById('screen-po')?.classList.contains('active')) renderPO();
+    }
+  } catch(e){ console.warn('[Sync] refreshPO error:',e.message); }
+}
+async function refreshSettings(){
+  if(!CFG.scriptUrl || !navigator.onLine) return;
+  try{
+    const r=await fetch(CFG.scriptUrl+'?action=settings',{method:'GET'});
+    if(!r.ok) return;
+    const payload=await r.json();
+    const items = payload && Array.isArray(payload.items) ? payload.items : null;
+    if(items && items.length > 0){
+      const remote = items[0];
+      if(remote.storeName || remote.gstRate){
+        CFG.gstRate = Number(remote.gstRate)||CFG.gstRate;
+        CFG.invPrefix = remote.invoicePrefix || CFG.invPrefix;
+        CFG.storeName = remote.storeName || CFG.storeName;
+        CFG.address = remote.storeAddress || CFG.address;
+        CFG.footer = remote.receiptFooter || CFG.footer;
+        save(K.settings, CFG);
+        snum(K.lastSync, Date.now());
+        if(document.getElementById('screen-settings')?.classList.contains('active')) loadSettings();
+      }
+    }
+  } catch(e){ console.warn('[Sync] refreshSettings error:',e.message); }
 }
 function setSyncState(s){
   g('sync-dot').className='sync-dot'+(s==='syncing'?' syncing':s==='error'?' offline':'');
@@ -2312,23 +2430,32 @@ renderDashboard();
 updateOnlineStatus();
 setTimeout(()=>{ if(navigator.onLine&&CFG.scriptUrl){ flushSyncQueue(); refreshRemoteData(); } },1200);
 
-// Background auto-refresh — keeps Inventory/POS fresh every 60s without manual action
+// Background auto-refresh — keeps the currently open screen fresh every 60s without manual action
+const SCREEN_REFRESHERS = {
+  'screen-inventory': ()=>refreshRemoteData().then(renderInventoryTable),
+  'pos-screen': ()=>refreshRemoteData().then(renderCatalog),
+  'screen-customers': ()=>refreshCustomers().then(renderCustomers),
+  'screen-expenses': ()=>refreshExpenses().then(renderExpenses),
+  'screen-staff': ()=>refreshStaff().then(renderStaff),
+  'screen-returns': ()=>refreshReturns().then(renderReturns),
+  'screen-eod': ()=>refreshEOD().then(renderEODHistory),
+  'screen-po': ()=>refreshPO().then(renderPO),
+  'screen-settings': ()=>refreshSettings().then(loadSettings)
+};
 setInterval(()=>{
   if(!navigator.onLine || !CFG.scriptUrl) return;
-  const onInventory = document.getElementById('screen-inventory')?.classList.contains('active');
-  const onPOS = document.getElementById('pos-screen')?.classList.contains('active');
-  const onCustomers = document.getElementById('screen-customers')?.classList.contains('active');
-  if(onInventory || onPOS){
-    flushSyncQueue().then(refreshRemoteData);
-  }
-  if(onCustomers){
-    flushSyncQueue().then(refreshCustomers);
-  }
+  flushSyncQueue().then(()=>{
+    for(const id in SCREEN_REFRESHERS){
+      if(document.getElementById(id)?.classList.contains('active')){
+        SCREEN_REFRESHERS[id]();
+      }
+    }
+  });
 }, 60000);
 
-// Also refresh immediately whenever the device regains internet connection
+// Also refresh everything immediately whenever the device regains internet connection
 window.addEventListener('online', ()=>{
-  if(CFG.scriptUrl) setTimeout(()=>{ flushSyncQueue().then(refreshRemoteData); flushSyncQueue().then(refreshCustomers); }, 800);
+  if(CFG.scriptUrl) setTimeout(()=>{ manualSync(); }, 800);
 });
 
 // ============================================================
@@ -2667,9 +2794,11 @@ function savePO(){
   if(!poItems.length||poItems.some(i=>!i.itemId)){showToast('Add at least one item','error');return;}
   const pos=load(K.po||'pos_v2_po');
   const total=poItems.reduce((s,i)=>s+i.qty*(i.cost||0),0);
-  pos.unshift({id:'PO-'+Date.now(),supplier,phone:g('po-sup-phone').value,delivery:g('po-delivery').value,notes:g('po-notes').value,items:[...poItems],total,status:'pending',created:new Date().toISOString()});
+  const po={id:'PO-'+Date.now(),supplier,phone:g('po-sup-phone').value,delivery:g('po-delivery').value,notes:g('po-notes').value,items:[...poItems],total,status:'pending',created:new Date().toISOString()};
+  pos.unshift(po);
   save(K.po||'pos_v2_po',pos);
   closeModal('po-modal'); renderPO();
+  queueSync({type:'po',action:'add',data:{id:po.id,supplier:po.supplier,items:po.items,status:po.status,date:po.created}});
   showToast('✅ Purchase order created','success');
 }
 function renderPO(){
@@ -2716,6 +2845,7 @@ function confirmReceivePO(){
   });
   po.status='received'; po.receivedAt=new Date().toISOString();
   save(K.inv,inv); save(K.po||'pos_v2_po',pos);
+  queueSync({type:'po',action:'update',data:{id:po.id,supplier:po.supplier,items:po.items,status:po.status,date:po.created}});
   closeModal('po-receive-modal'); renderPO();
   addAlert({type:'success',icon:'📦',text:`PO ${po.id} received from ${po.supplier}. Stock updated.`,time:new Date().toISOString()});
   showToast('✅ Stock received and updated','success');
@@ -2815,6 +2945,12 @@ function doGet(e) {
   if(action==='inventory') return json({items: getInventoryData()});
   if(action==='sales') return json({items: getSalesData()});
   if(action==='customers') return json({items: getCustomerData()});
+  if(action==='expenses') return json({items: getExpenseData()});
+  if(action==='staff') return json({items: getStaffData()});
+  if(action==='returns') return json({items: getReturnData()});
+  if(action==='eod') return json({items: getEodData()});
+  if(action==='purchaseorders') return json({items: getPOData()});
+  if(action==='settings') return json({items: getSettingsData()});
   return json({error:'Unknown action'});
 }
 
@@ -2834,6 +2970,12 @@ function doPost(e) {
       if(op.type==='sale') appendSale(op.data);
       else if(op.type==='inventory') applyInventoryOp(op);
       else if(op.type==='customer') applyCustomerOp(op);
+      else if(op.type==='expense') applyExpenseOp(op);
+      else if(op.type==='staff') applyStaffOp(op);
+      else if(op.type==='return') applyReturnOp(op);
+      else if(op.type==='eod') applyEodOp(op);
+      else if(op.type==='po') applyPOOp(op);
+      else if(op.type==='settings') applySettingsOp(op);
     });
     return json({status:'ok',synced:items.length});
   }
@@ -2971,6 +3113,140 @@ function getCustomerData() {
   return rows.slice(1)
     .filter(row => row.some(cell => cell !== ''))
     .map(row => Object.fromEntries(headers.map((h,i) => [h, row[i]])));
+}
+
+function applyExpenseOp(op) {
+  const sh = getSheet('Expenses');
+  const rows = sh.getDataRange().getValues();
+  if(!rows.length) sh.getRange(1,1,1,7).setValues([['id','desc','category','amount','payment','date','remark']]);
+  const headers = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
+  const idCol = headers.indexOf('id');
+  if(idCol === -1) return;
+  const data = op.data || {};
+  const freshRows = sh.getDataRange().getValues();
+  const rowIndex = freshRows.slice(1).findIndex(row => row[idCol] === data.id) + 2;
+  if(op.action === 'delete') { if(rowIndex > 1) sh.deleteRow(rowIndex); return; }
+  const row = [data.id||'', data.desc||'', data.category||'', Number(data.amount)||0, data.payment||'', data.date||'', data.remark||''];
+  if(rowIndex > 1) sh.getRange(rowIndex,1,1,row.length).setValues([row]);
+  else sh.appendRow(row);
+}
+function getExpenseData() {
+  const rows = getSheet('Expenses').getDataRange().getValues();
+  if(!rows.length) return [];
+  const headers = rows[0];
+  return rows.slice(1).filter(row=>row.some(c=>c!=='')).map(row=>Object.fromEntries(headers.map((h,i)=>[h,row[i]])));
+}
+
+function applyStaffOp(op) {
+  const sh = getSheet('Staff');
+  const rows = sh.getDataRange().getValues();
+  if(!rows.length) sh.getRange(1,1,1,5).setValues([['id','name','phone','role','active']]);
+  const headers = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
+  const idCol = headers.indexOf('id');
+  if(idCol === -1) return;
+  const data = op.data || {};
+  const freshRows = sh.getDataRange().getValues();
+  const rowIndex = freshRows.slice(1).findIndex(row => row[idCol] === data.id) + 2;
+  if(op.action === 'delete') { if(rowIndex > 1) sh.deleteRow(rowIndex); return; }
+  const row = [data.id||'', data.name||'', data.phone||'', data.role||'', data.active!==false];
+  if(rowIndex > 1) sh.getRange(rowIndex,1,1,row.length).setValues([row]);
+  else sh.appendRow(row);
+}
+function getStaffData() {
+  const rows = getSheet('Staff').getDataRange().getValues();
+  if(!rows.length) return [];
+  const headers = rows[0];
+  return rows.slice(1).filter(row=>row.some(c=>c!=='')).map(row=>Object.fromEntries(headers.map((h,i)=>[h,row[i]])));
+}
+
+function applyReturnOp(op) {
+  const sh = getSheet('Returns');
+  const rows = sh.getDataRange().getValues();
+  if(!rows.length) sh.getRange(1,1,1,5).setValues([['id','invoice','items','refundAmount','date']]);
+  const headers = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
+  const idCol = headers.indexOf('id');
+  if(idCol === -1) return;
+  const data = op.data || {};
+  const freshRows = sh.getDataRange().getValues();
+  const rowIndex = freshRows.slice(1).findIndex(row => row[idCol] === data.id) + 2;
+  if(op.action === 'delete') { if(rowIndex > 1) sh.deleteRow(rowIndex); return; }
+  const row = [data.id||'', data.invoice||'', JSON.stringify(data.items||[]), Number(data.refundAmount)||0, data.date||''];
+  if(rowIndex > 1) sh.getRange(rowIndex,1,1,row.length).setValues([row]);
+  else sh.appendRow(row);
+}
+function getReturnData() {
+  const rows = getSheet('Returns').getDataRange().getValues();
+  if(!rows.length) return [];
+  const headers = rows[0];
+  return rows.slice(1).filter(row=>row.some(c=>c!=='')).map(row=>{
+    const obj = Object.fromEntries(headers.map((h,i)=>[h,row[i]]));
+    try { obj.items = JSON.parse(obj.items||'[]'); } catch(e) { obj.items = []; }
+    return obj;
+  });
+}
+
+function applyEodOp(op) {
+  const sh = getSheet('EOD');
+  const rows = sh.getDataRange().getValues();
+  if(!rows.length) sh.getRange(1,1,1,9).setValues([['id','date','opening','counted','totalSales','totalExp','net','transactions','notes']]);
+  const headers = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
+  const idCol = headers.indexOf('id');
+  if(idCol === -1) return;
+  const data = op.data || {};
+  const freshRows = sh.getDataRange().getValues();
+  const rowIndex = freshRows.slice(1).findIndex(row => row[idCol] === data.id) + 2;
+  if(op.action === 'delete') { if(rowIndex > 1) sh.deleteRow(rowIndex); return; }
+  const row = [data.id||'', data.date||'', Number(data.opening)||0, Number(data.counted)||0, Number(data.totalSales)||0, Number(data.totalExp)||0, Number(data.net)||0, Number(data.transactions)||0, data.notes||''];
+  if(rowIndex > 1) sh.getRange(rowIndex,1,1,row.length).setValues([row]);
+  else sh.appendRow(row);
+}
+function getEodData() {
+  const rows = getSheet('EOD').getDataRange().getValues();
+  if(!rows.length) return [];
+  const headers = rows[0];
+  return rows.slice(1).filter(row=>row.some(c=>c!=='')).map(row=>Object.fromEntries(headers.map((h,i)=>[h,row[i]])));
+}
+
+function applyPOOp(op) {
+  const sh = getSheet('purchaseOrder');
+  const rows = sh.getDataRange().getValues();
+  if(!rows.length) sh.getRange(1,1,1,5).setValues([['id','supplier','items','status','date']]);
+  const headers = sh.getRange(1,1,1,sh.getLastColumn()).getValues()[0];
+  const idCol = headers.indexOf('id');
+  if(idCol === -1) return;
+  const data = op.data || {};
+  const freshRows = sh.getDataRange().getValues();
+  const rowIndex = freshRows.slice(1).findIndex(row => row[idCol] === data.id) + 2;
+  if(op.action === 'delete') { if(rowIndex > 1) sh.deleteRow(rowIndex); return; }
+  const row = [data.id||'', data.supplier||'', JSON.stringify(data.items||[]), data.status||'pending', data.date||''];
+  if(rowIndex > 1) sh.getRange(rowIndex,1,1,row.length).setValues([row]);
+  else sh.appendRow(row);
+}
+function getPOData() {
+  const rows = getSheet('purchaseOrder').getDataRange().getValues();
+  if(!rows.length) return [];
+  const headers = rows[0];
+  return rows.slice(1).filter(row=>row.some(c=>c!=='')).map(row=>{
+    const obj = Object.fromEntries(headers.map((h,i)=>[h,row[i]]));
+    try { obj.items = JSON.parse(obj.items||'[]'); } catch(e) { obj.items = []; }
+    return obj;
+  });
+}
+
+function applySettingsOp(op) {
+  const sh = getSheet('settings');
+  const rows = sh.getDataRange().getValues();
+  if(!rows.length) sh.getRange(1,1,1,5).setValues([['gstRate','invoicePrefix','storeName','storeAddress','receiptFooter']]);
+  const data = op.data || {};
+  const row = [Number(data.gstRate)||18, data.invoicePrefix||'INV-', data.storeName||'', data.storeAddress||'', data.receiptFooter||''];
+  // Settings is a single row — always overwrite row 2
+  sh.getRange(2,1,1,row.length).setValues([row]);
+}
+function getSettingsData() {
+  const rows = getSheet('settings').getDataRange().getValues();
+  if(rows.length < 2) return [];
+  const headers = rows[0];
+  return [Object.fromEntries(headers.map((h,i)=>[h,rows[1][i]]))];
 }
 
 function getSheet(name) {
