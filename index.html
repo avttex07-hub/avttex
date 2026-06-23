@@ -1352,7 +1352,7 @@ function clearCart(){
 // ============================================================
 let activeCategory='all';
 function renderCatalog(){
-  const inv=load(K.inv).filter(i=>i.active);
+  const inv=load(K.inv).filter(i=>i.active!==false);
   const cats=[...new Set(inv.map(i=>i.category))];
   const pills=g('category-pills');
   pills.innerHTML=`<div class="pill active" onclick="filterByCategory('all',this)">All</div>`;
@@ -1366,7 +1366,7 @@ function filterByCategory(cat,el){
 }
 function filterItems(){
   const q=g('item-search').value.toLowerCase().trim();
-  const inv=load(K.inv).filter(i=>i.active);
+  const inv=load(K.inv).filter(i=>i.active!==false);
   const filtered=inv.filter(i=>{
     const matchCat=activeCategory==='all'||i.category===activeCategory;
     const matchQ=!q||i.name.toLowerCase().includes(q)||(i.sku||'').toLowerCase().includes(q);
@@ -1598,7 +1598,7 @@ function renderDashboard(){
   const monthSales=sales.filter(s=>{ const d=new Date(s.date); return d.getMonth()===thisMonth&&d.getFullYear()===thisYear&&s.status==='paid'; });
   const monthAmt=monthSales.reduce((s,x)=>s+x.total,0);
   const todayItems=todaySales.reduce((s,x)=>s+x.items.reduce((a,i)=>a+i.qty,0),0);
-  const lowStock=inv.filter(i=>i.active&&i.stock<=i.reorder).length;
+  const lowStock=inv.filter(i=>i.active!==false&&i.stock<=i.reorder).length;
   const todayExp=expenses.filter(e=>new Date(e.date).toDateString()===today).reduce((s,e)=>s+e.amount,0);
   g('s-today-amt').textContent=fmt(todayAmt);
   g('s-today-cnt').textContent='↑ '+todaySales.length+' transaction'+(todaySales.length!==1?'s':'');
@@ -1656,7 +1656,7 @@ function renderSalesList(sales,containerId){
 function renderInventoryTable(){
   const q=(g('inv-search')?.value||'').toLowerCase();
   const inv=load(K.inv).filter(i=>!q||i.name.toLowerCase().includes(q)||(i.sku||'').toLowerCase().includes(q));
-  const lowCount=load(K.inv).filter(i=>i.active&&i.stock<=i.reorder).length;
+  const lowCount=load(K.inv).filter(i=>i.active!==false&&i.stock<=i.reorder).length;
   const badge=g('inv-count-badge');
   if(badge) badge.textContent=`(${inv.length} items${lowCount?' · ⚠ '+lowCount+' low stock':''})`;
   const el=g('inventory-list'); if(!el) return;
@@ -2902,7 +2902,7 @@ function renderNotifications(){
 }
 function checkLowStockAlerts(){
   const inv=load(K.inv);
-  inv.filter(i=>i.active&&i.stock<=i.reorder).forEach(i=>{
+  inv.filter(i=>i.active!==false&&i.stock<=i.reorder).forEach(i=>{
     addAlert({type:'warn',icon:'⚠️',text:`Low stock: ${i.name} — only ${i.stock} left (threshold: ${i.reorder})`,time:new Date().toISOString()});
   });
 }
