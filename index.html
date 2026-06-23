@@ -2153,10 +2153,16 @@ async function pushEverything(){
   showToast('⬆ Pushing '+ops.length+' records…','info');
   setSyncState('syncing');
   try{
-    const fd=new FormData();
-    fd.append('payload', JSON.stringify({items:ops}));
-    fd.append('action','sync');
-    await fetch(CFG.scriptUrl, {method:'POST', body:fd, mode:'no-cors'});
+    const r = await fetch(CFG.scriptUrl, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'sync', items:ops}),
+      redirect:'follow'
+    });
+    if(!r.ok) throw new Error('Server returned '+r.status);
+    let result;
+    try{ result = await r.json(); } catch(_){ result = {}; }
+    if(result.error) throw new Error(result.error);
     snum(K.lastSync, Date.now());
     setSyncState('synced');
     showToast('✅ Pushed '+ops.length+' records — check your Google Sheet','success');
@@ -2170,17 +2176,23 @@ async function flushSyncQueue(){
   const q=load(K.queue); if(!q.length) return;
   setSyncState('syncing');
   try {
-    // Use no-cors + FormData to avoid CORS preflight (Apps Script doesn't handle OPTIONS)
-    const fd=new FormData();
-    fd.append('payload', JSON.stringify({items:q}));
-    fd.append('action','sync');
-    await fetch(CFG.scriptUrl, {method:'POST', body:fd, mode:'no-cors'});
-    // no-cors response is opaque — we can't confirm success from the response itself.
-    // Pull fresh data right after to verify the push actually landed on the Sheet.
+    const r = await fetch(CFG.scriptUrl, {
+      method:'POST',
+      headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'sync', items:q}),
+      redirect:'follow'
+    });
+    if(!r.ok) throw new Error('Server returned '+r.status);
+    let result;
+    try{ result = await r.json(); } catch(_){ result = {}; }
+    if(result.error) throw new Error(result.error);
     save(K.queue,[]);
     snum(K.lastSync, Date.now());
     setSyncState('synced');
-  } catch(e){ setSyncState('error'); }
+  } catch(e){
+    console.warn('[Sync] flushSyncQueue error:', e.message);
+    setSyncState('error');
+  }
 }
 async function manualSync(){
   if(!CFG.scriptUrl){ showToast('⚠ No Apps Script URL configured in Settings','error'); return; }
