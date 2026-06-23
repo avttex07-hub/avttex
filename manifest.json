@@ -1,7 +1,7 @@
 {
-  "name": "Mrithula Collection POS",
-  "short_name": "Mrithula POS",
-  "description": "Point of Sale system for Mrithula Collection — Tambaram, Chennai",
+  "name": "AVT TEX POS",
+  "short_name": "AVT TEX",
+  "description": "Point of Sale system for AVT TEX — Tambaram, Chennai",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
