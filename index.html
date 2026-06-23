@@ -982,6 +982,7 @@ textarea.form-control{resize:vertical;min-height:60px;}
       <div class="settings-section-title">⚠ Data Management</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-sm" onclick="exportAllData()">⬇ Export All Data</button>
+        <button class="btn btn-primary btn-sm" onclick="forceAppUpdate()">🔄 Force App Update</button>
         <button class="btn btn-danger btn-sm" onclick="clearAllSales()">🗑 Clear All Sales</button>
         <button class="btn btn-danger btn-sm" onclick="resetAll()">💣 Factory Reset</button>
       </div>
@@ -1217,6 +1218,18 @@ function clearAllSales() {
   if(!confirm('Delete ALL sales data? This cannot be undone.')) return;
   save(K.sales, []); save(K.queue, []); snum(K.seq, 1000);
   showToast('All sales cleared','error');
+}
+async function forceAppUpdate() {
+  if(!confirm('This will clear the app cache and reload to get the latest version. Continue?')) return;
+  if('serviceWorker' in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for(let r of regs) await r.unregister();
+  }
+  if('caches' in window) {
+    const keys = await caches.keys();
+    for(let k of keys) await caches.delete(k);
+  }
+  window.location.reload(true);
 }
 function resetAll() {
   if(!confirm('FACTORY RESET: delete all local data?')) return;
@@ -2199,7 +2212,7 @@ async function manualSync(){
   showToast('🔄 Syncing everything…','info');
   await flushSyncQueue();
   await Promise.all([
-    refreshRemoteData(), refreshCustomers(), refreshExpenses(),
+    refreshSales(), refreshRemoteData(), refreshCustomers(), refreshExpenses(),
     refreshStaff(), refreshReturns(), refreshEOD(), refreshPO(), refreshSettings()
   ]);
   // Re-render whichever screen is currently visible so changes show immediately
@@ -2231,6 +2244,22 @@ async function refreshRemoteData(){
       console.warn('[Sync] Remote inventory empty or invalid — keeping local data');
     }
   } catch(e){ console.warn('[Sync] refreshRemoteData error:',e.message); }
+}
+async function refreshSales(){
+  if(!CFG.scriptUrl || !navigator.onLine) return;
+  try{
+    const r=await fetch(CFG.scriptUrl+'?action=sales',{method:'GET'});
+    if(!r.ok){ console.warn('[Sync] sales fetch failed:',r.status); return; }
+    const payload=await r.json();
+    const items = payload && Array.isArray(payload.items) ? payload.items : (Array.isArray(payload) ? payload : null);
+    if(items && items.length > 0 && items.every(i=>i && i.invoice)){
+      save(K.sales, items);
+      snum(K.lastSync, Date.now());
+      if(document.getElementById('screen-dashboard')?.classList.contains('active')) renderDashboard();
+      if(document.getElementById('screen-reports')?.classList.contains('active')) renderReports();
+      console.log('[Sync] Sales refreshed:',items.length,'records');
+    }
+  } catch(e){ console.warn('[Sync] refreshSales error:',e.message); }
 }
 async function refreshCustomers(){
   if(!CFG.scriptUrl || !navigator.onLine) return;
@@ -2444,6 +2473,8 @@ setTimeout(()=>{ if(navigator.onLine&&CFG.scriptUrl){ flushSyncQueue(); refreshR
 
 // Background auto-refresh — keeps the currently open screen fresh every 60s without manual action
 const SCREEN_REFRESHERS = {
+  'screen-dashboard': ()=>refreshSales().then(renderDashboard),
+  'screen-reports': ()=>refreshSales().then(renderReports),
   'screen-inventory': ()=>refreshRemoteData().then(renderInventoryTable),
   'pos-screen': ()=>refreshRemoteData().then(renderCatalog),
   'screen-customers': ()=>refreshCustomers().then(renderCustomers),
