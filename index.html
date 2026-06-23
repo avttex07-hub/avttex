@@ -2207,20 +2207,23 @@ async function flushSyncQueue(){
     setSyncState('error');
   }
 }
-async function manualSync(){
-  if(!CFG.scriptUrl){ showToast('⚠ No Apps Script URL configured in Settings','error'); return; }
-  showToast('🔄 Syncing everything…','info');
+async function silentSyncAll(){
+  if(!CFG.scriptUrl || !navigator.onLine) return;
   await flushSyncQueue();
   await Promise.all([
     refreshSales(), refreshRemoteData(), refreshCustomers(), refreshExpenses(),
     refreshStaff(), refreshReturns(), refreshEOD(), refreshPO(), refreshSettings()
   ]);
-  // Re-render whichever screen is currently visible so changes show immediately
-  const renders = {dashboard:renderDashboard,inventory:renderInventoryTable,pos:renderCatalog,customers:renderCustomers,returns:renderReturns,expenses:renderExpenses,eod:renderEODHistory,staff:renderStaff,po:renderPO,settings:loadSettings};
+  const renders = {dashboard:renderDashboard,inventory:renderInventoryTable,pos:renderCatalog,customers:renderCustomers,returns:renderReturns,expenses:renderExpenses,eod:renderEODHistory,staff:renderStaff,po:renderPO,settings:loadSettings,reports:renderReports};
   for(const page in renders){
     const el = document.getElementById('screen-'+page) || document.getElementById(page+'-screen');
     if(el?.classList.contains('active')) renders[page]();
   }
+}
+async function manualSync(){
+  if(!CFG.scriptUrl){ showToast('⚠ No Apps Script URL configured in Settings','error'); return; }
+  showToast('🔄 Syncing everything…','info');
+  await silentSyncAll();
   const q=load(K.queue);
   if(q.length===0) showToast('✅ Everything synced','success');
   else showToast('⚠ '+q.length+' item(s) still pending sync','error');
@@ -2444,8 +2447,7 @@ function updateOnlineStatus(){
   else {
     b.classList.remove('show');
     setSyncState('synced');
-    flushSyncQueue();
-    refreshRemoteData();
+    silentSyncAll();
   }
 }
 window.addEventListener('online',updateOnlineStatus);
@@ -2469,7 +2471,7 @@ seedIfEmpty();
 loadSettings();
 renderDashboard();
 updateOnlineStatus();
-setTimeout(()=>{ if(navigator.onLine&&CFG.scriptUrl){ flushSyncQueue(); refreshRemoteData(); } },1200);
+setTimeout(()=>{ if(navigator.onLine&&CFG.scriptUrl){ silentSyncAll(); } },1200);
 
 // Background auto-refresh — keeps the currently open screen fresh every 60s without manual action
 const SCREEN_REFRESHERS = {
