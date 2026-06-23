@@ -1,9 +1,9 @@
 // ============================================================
-//  Mrithula Collection POS — Service Worker
+//  AVT TEX POS — Service Worker
 //  Handles offline caching & PWA install
 // ============================================================
 
-const CACHE_NAME = 'mrithula-pos-v1';
+const CACHE_NAME = 'avt-tex-pos-v3';
 
 // Files to cache on install
 const PRECACHE_FILES = [
@@ -128,4 +128,4 @@ self.addEventListener('message', event => {
   }
 });
 
-console.log('[SW] Service Worker loaded — Mrithula POS v1');
+console.log('[SW] Service Worker loaded — AVT TEX POS v1');
