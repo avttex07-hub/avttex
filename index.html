@@ -1419,7 +1419,10 @@ function renderCartItems(){
       <span class="cart-item-emoji">${item.emoji}</span>
       <div class="cart-item-details">
         <div class="cart-item-name">${item.name}</div>
-        <div class="cart-item-price">${fmt(item.price)} each · GST ${item.gst}%</div>
+        <div class="cart-item-price" style="display:flex; align-items:center; gap:4px; margin-top:2px;">
+          ₹<input type="number" value="${item.price}" onchange="changeCartItemPrice(${idx}, this.value)" style="width:55px; padding:2px; font-size:11px; height:20px; background:var(--bg3); border:1px solid var(--border); color:var(--text0); border-radius:4px; text-align:right;">
+          each · GST ${item.gst}%
+        </div>
       </div>
       <div class="cart-qty-ctrl">
         <div class="qty-btn" onclick="changeQty(${idx},-1)">−</div>
@@ -1432,6 +1435,11 @@ function renderCartItems(){
 function changeQty(idx,delta){
   cart[idx].qty+=delta;
   if(cart[idx].qty<=0) cart.splice(idx,1);
+  renderCartItems(); recalculate();
+}
+function changeCartItemPrice(idx, newPrice) {
+  const p = parseFloat(newPrice);
+  if(!isNaN(p) && p >= 0) cart[idx].price = p;
   renderCartItems(); recalculate();
 }
 
